@@ -9,7 +9,7 @@
 FROM quay.io/keycloak/keycloak:26.0.8
 
 # renovate: datasource=github-releases depName=ELifeRPG/keycloak-bohemia-gameaccount
-ENV ELIFERPG_BOHEMIA_GAMEACCOUNT_VERSION=1.0.0
+ENV ELIFERPG_BOHEMIA_GAMEACCOUNT_VERSION=1.1.0
 # renovate: datasource=github-releases depName=ELifeRPG/keycloak-theme-eliferpg
 ENV ELIFERPG_THEME_VERSION=1.0.1
 
