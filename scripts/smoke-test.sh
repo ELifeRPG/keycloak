@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Boots the image against a throwaway Postgres and asserts Keycloak actually loaded the ELifeRPG
-# providers: the `link-bohemia-gameaccount` required action and the `eliferpg` login theme, and that
-# the required action's PIN page renders under the `eliferpg` theme.
+# providers: the `link-bohemia-gameaccount` required action and the `eliferpg` login theme, that
+# the required action's PIN page renders under the `eliferpg` theme, and that a `link_pin` on the
+# authorize request reaches the form prefilled.
 #
 #   scripts/smoke-test.sh <image>
 set -euo pipefail
@@ -63,12 +64,21 @@ curl -fs -X POST "$BASE/admin/realms/smoke/clients" "${ADMIN[@]}" \
   -d '{"clientId":"smoke","publicClient":true,"standardFlowEnabled":true,"redirectUris":["http://localhost/*"]}'
 curl -fs -X POST "$BASE/admin/realms/smoke/users" "${ADMIN[@]}" \
   -d '{"username":"smoke","enabled":true,"emailVerified":true,"email":"smoke@example.test","firstName":"S","lastName":"S","credentials":[{"type":"password","value":"smoke","temporary":false}]}'
+# The link URL the backend hands a player carries the PIN as an extra authorize param. Keycloak
+# stashes unknown params as client notes (`client_request_param_link_pin`), which is where the
+# required action reads it from — so this asserts the whole path through the built image, not just
+# that the provider loaded. A Keycloak bump that changed how additional params are stashed would
+# render an empty field and pass every other check here.
+SMOKE_PIN=SMOKE123
 LOGIN_PAGE=$(curl -fs -c "$COOKIES" -L \
-  "$BASE/realms/smoke/protocol/openid-connect/auth?client_id=smoke&response_type=code&scope=openid&redirect_uri=http://localhost/cb&kc_action=link-bohemia-gameaccount")
+  "$BASE/realms/smoke/protocol/openid-connect/auth?client_id=smoke&response_type=code&scope=openid&redirect_uri=http://localhost/cb&kc_action=link-bohemia-gameaccount&link_pin=$SMOKE_PIN")
 LOGIN_ACTION=$(grep -oE '"loginAction": *"[^"]*"' <<<"$LOGIN_PAGE" | sed -E 's/.*: *"//; s/"$//; s#\\/#/#g')
 PIN_PAGE=$(curl -s -c "$COOKIES" -b "$COOKIES" -L "$LOGIN_ACTION" -d username=smoke -d password=smoke)
 rm -f "$COOKIES"
 grep -q 'name="pin"' <<<"$PIN_PAGE" \
   && echo "ok: PIN page renders under the eliferpg theme" \
   || { echo "FAIL: PIN page does not render under the eliferpg theme" >&2; fail=1; }
+grep -q "value=\"$SMOKE_PIN\"" <<<"$PIN_PAGE" \
+  && echo "ok: link_pin from the authorize request prefills the form" \
+  || { echo "FAIL: link_pin did not reach the PIN form" >&2; fail=1; }
 exit $fail
