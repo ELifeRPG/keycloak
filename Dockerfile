@@ -6,7 +6,7 @@
 # The provider SPI carries no cross-version compatibility guarantee, so a bump only ships once
 # CI's smoke test (scripts/smoke-test.sh) has loaded the providers into the new combination.
 
-FROM quay.io/keycloak/keycloak:26.8.1
+FROM quay.io/keycloak/keycloak:26.8.2
 
 # renovate: datasource=github-releases depName=ELifeRPG/keycloak-bohemia-gameaccount
 ENV ELIFERPG_BOHEMIA_GAMEACCOUNT_VERSION=1.2.0
